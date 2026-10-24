@@ -11,7 +11,7 @@ let peerConnection;
 let targetSocketId;
 let localStream;
 
-const config = { iceServers: [{ urls: 'stun:://google.com' }] };
+const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 function logStatus(message, isError = false) {
   statusLog.textContent = `> ${message}`;
