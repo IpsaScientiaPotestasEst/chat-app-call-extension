@@ -45,7 +45,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-  
     pairings.set(socket.id, targetSocketId);
     pairings.set(targetSocketId, socket.id);
 
@@ -69,7 +68,6 @@ io.on('connection', (socket) => {
     io.to(data.to).emit('ice-candidate', { candidate: data.candidate });
   });
 
-  
   socket.on('hangup-signal', (data) => {
     io.to(data.to).emit('hangup-signal');
   });
@@ -77,7 +75,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const peerId = pairings.get(socket.id);
     if (peerId) {
-
       io.to(peerId).emit('hangup-signal');
       io.to(peerId).emit('receive-chat-message', { text: '[System Notification: Peer disconnected from server]' });
       pairings.delete(peerId);
@@ -88,4 +85,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sleek Comms server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Server running`));
