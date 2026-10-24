@@ -1,8 +1,4 @@
-const BACKEND_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000' 
-  : 'https://chat-app-call-extension.onrender.com'; 
-
-const socket = io(BACKEND_URL);
+const socket = io(window.location.origin);
 
 const myCodeEl = document.getElementById('my-code');
 const targetCodeInput = document.getElementById('target-code');
@@ -16,11 +12,23 @@ const messageDisplay = document.getElementById('message-display');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 
+
+const callBtn = document.getElementById('call-btn');
+const muteBtn = document.getElementById('mute-btn');
+const hangupBtn = document.getElementById('hangup-btn');
+
 let peerConnection;
 let targetSocketId;
 let localStream;
+let isMuted = false;
 
-const config = { iceServers: [{ urls: 'stun:://google.com' }] };
+const config = {
+  iceServers: [
+    {
+      urls: 'stun:://google.com'
+    }
+  ]
+};
 
 function logStatus(message, isError = false) {
   statusLog.textContent = `> ${message}`;
@@ -34,6 +42,7 @@ function appendMessage(text, type) {
   messageDisplay.appendChild(msgDiv);
   messageDisplay.scrollTop = messageDisplay.scrollHeight;
 }
+
 
 socket.on('your-code', (code) => {
   myCodeEl.textContent = code;
@@ -55,48 +64,13 @@ connectBtn.addEventListener('click', () => {
 });
 
 
-socket.on('start-call-initiation', async (data) => {
+socket.on('start-call-initiation', (data) => {
   targetSocketId = data.to;
-  logStatus('Mutual match confirmed! Syncing text & audio engines...');
+  logStatus('Secure terminal pipeline linked! Data node online.');
   
-
   matchmakerUi.style.display = 'none';
   chatUi.style.display = 'block';
   messageInput.focus();
-
-  try {
-    logStatus('Requesting mic access hardware...');
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    logStatus('Microphone linked. Injecting audio pipeline...');
-
-    peerConnection = new RTCPeerConnection(config);
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit('ice-candidate', { candidate: event.candidate, to: targetSocketId });
-      }
-    };
-
-    peerConnection.ontrack = (event) => {
-      logStatus('Secure P2P audio pipeline linked! Chat & Call active.');
-      if (event.streams && event.streams[0]) {
-        remoteAudio.srcObject = event.streams[0];
-      } else {
-        remoteAudio.srcObject = new MediaStream([event.track]);
-      }
-    };
-
-    if (data.initiator) {
-      logStatus('Establishing encrypted secure channel handshake...');
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      socket.emit('offer', { sdp: offer, to: targetSocketId });
-    }
-  } catch (err) {
-    logStatus(`Hardware block: ${err.name} - ${err.message}`, true);
-    console.error('Audio engine track mismatch:', err);
-  }
 });
 
 
@@ -119,8 +93,94 @@ socket.on('receive-chat-message', (data) => {
 });
 
 
+
+async function initializeAudioCall() {
+  logStatus('Requesting mic access hardware...');
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    logStatus('Microphone linked. Injecting audio pipeline...');
+
+    peerConnection = new RTCPeerConnection(config);
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit('ice-candidate', { candidate: event.candidate, to: targetSocketId });
+      }
+    };
+
+    peerConnection.ontrack = (event) => {
+      logStatus('Voice pipeline stream connected and active.');
+      if (event.streams && event.streams[0]) {
+        remoteAudio.srcObject = event.streams[0];
+      } else {
+        remoteAudio.srcObject = new MediaStream([event.track]);
+      }
+    };
+
+    
+    callBtn.style.display = 'none';
+    muteBtn.style.display = 'block';
+    hangupBtn.style.display = 'block';
+
+  } catch (err) {
+    logStatus(`Hardware block: ${err.message}`, true);
+  }
+}
+
+
+callBtn.addEventListener('click', async () => {
+  await initializeAudioCall();
+  logStatus('Sending incoming call request to peer...');
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  socket.emit('offer', { sdp: offer, to: targetSocketId });
+});
+
+
+muteBtn.addEventListener('click', () => {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks()[0].enabled = !isMuted;
+  muteBtn.textContent = isMuted ? 'UNMUTE MIC' : 'MUTE MIC';
+  muteBtn.style.background = isMuted ? '#ff9900' : '#ffcc00';
+  logStatus(isMuted ? 'Microphone muted locally.' : 'Microphone transmission active.');
+});
+
+
+function terminateAudioCall() {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  remoteAudio.srcObject = null;
+
+  callBtn.style.display = 'block';
+  muteBtn.style.display = 'none';
+  hangupBtn.style.display = 'none';
+  muteBtn.textContent = 'MUTE MIC';
+  muteBtn.style.background = '#ffcc00';
+  isMuted = false;
+  
+  logStatus('Audio node call disconnected. Text channel remains live.');
+}
+
+hangupBtn.addEventListener('click', () => {
+  terminateAudioCall();
+ 
+  socket.emit('send-chat-message', { text: '[System Notification: Voice call disconnected]', to: targetSocketId });
+});
+
+
+
 socket.on('offer', async (data) => {
-  if (!peerConnection) return;
+  logStatus('Incoming connection request...');
+  if (!peerConnection) await initializeAudioCall();
+  
   await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
@@ -137,7 +197,7 @@ socket.on('ice-candidate', async (data) => {
   try {
     await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
   } catch (e) {
-    console.error('Error adding received ice candidate', e);
+    console.error('Ice matching exception:', e);
   }
 });
 
