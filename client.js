@@ -102,9 +102,16 @@ async function initializeAudioCall() {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting pipeline...');
 
- 
+  
     peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:://google.com' }]
+      iceServers: [
+        {
+          urls: [
+            'stun:stun.l.google.com:19302',
+            'stun:://twilio.com'
+          ]
+        }
+      ]
     });
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -140,27 +147,6 @@ async function initializeAudioCall() {
     console.error('WebRTC Hardware Allocation Failure:', err);
     throw err;
   }
-}
-
-if (callBtn) {
-  callBtn.addEventListener('click', async () => {
-    logStatus('Waking voice architecture modules...');
-    try {
-      await initializeAudioCall();
-      
-      if (!peerConnection) {
-        logStatus('Initialization failed: Engine block is blank.', true);
-        return;
-      }
-
-      logStatus('Broadcasting session offer handshake across network...');
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      socket.emit('offer', { sdp: offer, to: targetSocketId });
-    } catch (offerErr) {
-      logStatus(`Offer mapping failure: ${offerErr.message}`, true);
-    }
-  });
 }
 
 if (muteBtn) {
