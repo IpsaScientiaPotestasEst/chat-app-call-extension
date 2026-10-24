@@ -9,11 +9,12 @@
 <body>
   <div class="glow-container">
     <header>
-      <p class="subtitle">Secure, fast, P2P audio & text node</p>
+  
+      <p class="subtitle">Secure, fast, modular command panel</p>
     </header>
 
     <main class="panel">
-   
+    
       <div id="matchmaker-ui">
         <div class="code-display-section">
           <label>YOUR HANDSHAKE CODE</label>
@@ -27,8 +28,13 @@
         </div>
       </div>
 
-   
       <div id="chat-ui" style="display: none;">
+        <div class="call-controls-panel">
+          <button id="call-btn" class="ctrl-btn green-glow">INITIALIZE CALL</button>
+          <button id="mute-btn" class="ctrl-btn yellow-glow" style="display: none;">MUTE MIC</button>
+          <button id="hangup-btn" class="ctrl-btn red-glow" style="display: none;">DISCONNECT CALL</button>
+        </div>
+
         <div id="message-display" class="message-log"></div>
         <div class="message-input-area">
           <input type="text" id="message-input" placeholder="Type transmission..." autocomplete="off">
