@@ -9,8 +9,7 @@
 <body>
   <div class="glow-container">
     <header>
-    
-      <p class="subtitle">Secure, fast, peer-to-peer text node</p>
+      <p class="subtitle">Secure, fast, P2P audio & text node</p>
     </header>
 
     <main class="panel">
@@ -28,7 +27,7 @@
         </div>
       </div>
 
-    
+   
       <div id="chat-ui" style="display: none;">
         <div id="message-display" class="message-log"></div>
         <div class="message-input-area">
@@ -39,6 +38,8 @@
 
       <div id="status-log" class="status-box">System idle. Ready for pairing handshake.</div>
     </main>
+
+    <audio id="remote-audio" autoplay></audio>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
