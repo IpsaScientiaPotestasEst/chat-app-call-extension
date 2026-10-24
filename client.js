@@ -128,14 +128,25 @@ async function initializeAudioCall() {
   }
 }
 
-
 callBtn.addEventListener('click', async () => {
+  logStatus('Initializing local media engines...');
   await initializeAudioCall();
+  
+  if (!peerConnection) {
+    logStatus('Connection failed: Engine node not initialized.', true);
+    return;
+  }
+
   logStatus('Sending incoming call request to peer...');
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  socket.emit('offer', { sdp: offer, to: targetSocketId });
+  try {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    socket.emit('offer', { sdp: offer, to: targetSocketId });
+  } catch (offerErr) {
+    logStatus(`Handshake generation failed: ${offerErr.message}`, true);
+  }
 });
+
 
 
 muteBtn.addEventListener('click', () => {
