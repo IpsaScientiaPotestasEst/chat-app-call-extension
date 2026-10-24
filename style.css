@@ -126,26 +126,6 @@ button:active {
   transform: scale(0.98);
 }
 
-.status-box {
-  background: rgba(0, 0, 0, 0.4);
-  border-left: 3px solid var(--neon-green);
-  padding: 10px;
-  font-size: 0.75rem;
-  text-align: left;
-  line-height: 1.4;
-  min-height: 50px;
-  word-break: break-all;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.4; }
-  50% { opacity: 1; }
-  100% { opacity: 0.4; }
-}
-
-/* ... keep your existing style.css code from earlier ... */
-/* Add these rules to handle the chat message mechanics: */
-
 .message-log {
   height: 250px;
   background: rgba(0, 0, 0, 0.5);
@@ -171,14 +151,8 @@ button:active {
   word-break: break-all;
 }
 
-.msg.peer {
-  color: var(--neon-green);
-}
-
-.msg.self {
-  color: #88ccaa;
-  opacity: 0.8;
-}
+.msg.peer { color: var(--neon-green); }
+.msg.self { color: #88ccaa; opacity: 0.8; }
 
 .message-input-area {
   display: flex;
@@ -204,4 +178,21 @@ button:active {
 #send-btn {
   width: auto;
   padding: 10px 20px;
+}
+
+.status-box {
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 3px solid var(--neon-green);
+  padding: 10px;
+  font-size: 0.75rem;
+  text-align: left;
+  line-height: 1.4;
+  min-height: 50px;
+  word-break: break-all;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
 }
