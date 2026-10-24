@@ -73,6 +73,10 @@ io.on('connection', (socket) => {
   });
 });
 
+ socket.on('send-chat-message', (data) => {
+    
+    io.to(data.to).emit('receive-chat-message', { text: data.text });
+  });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Node server running on port ${PORT}`));
