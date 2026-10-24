@@ -197,7 +197,6 @@ button:active {
   100% { opacity: 0.4; }
 }
 
-/* Add these utility classes to handle the button panel mechanics */
 .call-controls-panel {
   display: flex;
   gap: 10px;
