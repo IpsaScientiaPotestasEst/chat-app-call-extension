@@ -8,43 +8,34 @@
 </head>
 <body>
   <div class="glow-container">
-    
-
     <main class="panel">
-
       <div id="matchmaker-ui">
         <div class="code-display-section">
           <label>YOUR HANDSHAKE CODE</label>
           <div id="my-code" class="loading-pulse">----</div>
         </div>
-
         <div class="input-section">
           <label for="target-code">ENTER PEER CODE</label>
           <input type="text" id="target-code" maxlength="4" placeholder="0000" autocomplete="off">
           <button id="connect-btn">CONNECT NODE</button>
         </div>
       </div>
-
       <div id="chat-ui" style="display: none;">
         <div class="call-controls-panel">
           <button id="call-btn" class="ctrl-btn green-glow">INITIALIZE CALL</button>
           <button id="mute-btn" class="ctrl-btn yellow-glow">MUTE MIC</button>
           <button id="hangup-btn" class="ctrl-btn red-glow">DISCONNECT CALL</button>
         </div>
-
         <div id="message-display" class="message-log"></div>
         <div class="message-input-area">
           <input type="text" id="message-input" placeholder="Type transmission..." autocomplete="off">
           <button id="send-btn">SEND</button>
         </div>
       </div>
-
       <div id="status-log" class="status-box">System idle. Ready for pairing handshake.</div>
     </main>
-
-    <audio id="remote-audio" autoplay></audio>
+    <audio id="remote-audio" autoplay playsinline></audio>
   </div>
-
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
 </body>
