@@ -45,21 +45,17 @@ io.on('connection', (socket) => {
       return;
     }
 
+  
     pairings.set(socket.id, targetSocketId);
+    pairings.set(targetSocketId, socket.id);
 
-    if (pairings.get(targetSocketId) === socket.id) {
-      io.to(socket.id).emit('start-call-initiation', { to: targetSocketId, initiator: true });
-      io.to(targetSocketId).emit('start-call-initiation', { to: socket.id, initiator: false });
-    } else {
-      socket.emit('waiting-message', 'Code accepted. Waiting for peer confirmation...');
-    }
+    io.to(socket.id).emit('start-call-initiation', { to: targetSocketId, initiator: true });
+    io.to(targetSocketId).emit('start-call-initiation', { to: socket.id, initiator: false });
   });
-
 
   socket.on('send-chat-message', (data) => {
     io.to(data.to).emit('receive-chat-message', { text: data.text });
   });
-
 
   socket.on('offer', (data) => {
     io.to(data.to).emit('offer', { sdp: data.sdp, from: socket.id });
@@ -73,7 +69,19 @@ io.on('connection', (socket) => {
     io.to(data.to).emit('ice-candidate', { candidate: data.candidate });
   });
 
+  
+  socket.on('hangup-signal', (data) => {
+    io.to(data.to).emit('hangup-signal');
+  });
+
   socket.on('disconnect', () => {
+    const peerId = pairings.get(socket.id);
+    if (peerId) {
+
+      io.to(peerId).emit('hangup-signal');
+      io.to(peerId).emit('receive-chat-message', { text: '[System Notification: Peer disconnected from server]' });
+      pairings.delete(peerId);
+    }
     activeCodes.delete(myCode);
     pairings.delete(socket.id);
   });
