@@ -102,6 +102,7 @@ async function initializeAudioCall() {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting pipeline...');
 
+ 
     peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:://google.com' }]
     });
@@ -109,7 +110,7 @@ async function initializeAudioCall() {
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
     peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && targetSocketId) {
         socket.emit('ice-candidate', { candidate: event.candidate, to: targetSocketId });
       }
     };
@@ -126,27 +127,33 @@ async function initializeAudioCall() {
     };
 
     if (callBtn) callBtn.disabled = true;
-    if (muteBtn) muteBtn.disabled = false;
+    if (muteBtn) {
+      muteBtn.disabled = false;
+      muteBtn.textContent = 'MUTE MIC';
+      muteBtn.style.background = '#ffcc00';
+    }
     if (hangupBtn) hangupBtn.disabled = false;
+    isMuted = false;
 
   } catch (err) {
     logStatus(`Hardware block: ${err.message}`, true);
     console.error('WebRTC Hardware Allocation Failure:', err);
+    throw err;
   }
 }
 
 if (callBtn) {
   callBtn.addEventListener('click', async () => {
     logStatus('Waking voice architecture modules...');
-    await initializeAudioCall();
-    
-    if (!peerConnection) {
-      logStatus('Initialization failed: Engine block is blank.', true);
-      return;
-    }
-
-    logStatus('Broadcasting session offer handshake across network...');
     try {
+      await initializeAudioCall();
+      
+      if (!peerConnection) {
+        logStatus('Initialization failed: Engine block is blank.', true);
+        return;
+      }
+
+      logStatus('Broadcasting session offer handshake across network...');
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('offer', { sdp: offer, to: targetSocketId });
@@ -193,25 +200,46 @@ function terminateAudioCall() {
 if (hangupBtn) {
   hangupBtn.addEventListener('click', () => {
     terminateAudioCall();
+    
+    socket.emit('hangup-signal', { to: targetSocketId });
     socket.emit('send-chat-message', { text: '[System Notification: Voice call disconnected]', to: targetSocketId });
   });
 }
 
+
+socket.on('hangup-signal', () => {
+  terminateAudioCall();
+});
+
 socket.on('offer', async (data) => {
   logStatus('Incoming call handshake detected. Connecting...');
-  if (!peerConnection) await initializeAudioCall();
   
-  if (peerConnection) {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    socket.emit('answer', { sdp: answer, to: targetSocketId });
+ 
+  if (data.from) {
+    targetSocketId = data.from;
+  }
+
+  try {
+    if (!peerConnection) await initializeAudioCall();
+    
+    if (peerConnection) {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('answer', { sdp: answer, to: targetSocketId });
+    }
+  } catch (err) {
+    logStatus(`Inbound call resolution failed: ${err.message}`, true);
   }
 });
 
 socket.on('answer', async (data) => {
   if (!peerConnection) return;
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+  } catch (err) {
+    logStatus(`Answer handshake rejection: ${err.message}`, true);
+  }
 });
 
 socket.on('ice-candidate', async (data) => {
