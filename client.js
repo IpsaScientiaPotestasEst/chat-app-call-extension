@@ -12,7 +12,6 @@ const messageDisplay = document.getElementById('message-display');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 
-
 const callBtn = document.getElementById('call-btn');
 const muteBtn = document.getElementById('mute-btn');
 const hangupBtn = document.getElementById('hangup-btn');
@@ -23,49 +22,61 @@ let localStream;
 let isMuted = false;
 
 function logStatus(message, isError = false) {
-  statusLog.textContent = `> ${message}`;
-  statusLog.style.borderColor = isError ? '#ff3333' : '#00ff66';
+  if (statusLog) {
+    statusLog.textContent = `> ${message}`;
+    statusLog.style.borderColor = isError ? '#ff3333' : '#00ff66';
+  }
 }
 
 function appendMessage(text, type) {
-  const msgDiv = document.createElement('div');
-  msgDiv.classList.add('msg', type);
-  msgDiv.textContent = type === 'self' ? `[You]: ${text}` : `[Peer]: ${text}`;
-  messageDisplay.appendChild(msgDiv);
-  messageDisplay.scrollTop = messageDisplay.scrollHeight;
+  if (messageDisplay) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('msg', type);
+    msgDiv.textContent = type === 'self' ? `[You]: ${text}` : `[Peer]: ${text}`;
+    messageDisplay.appendChild(msgDiv);
+    messageDisplay.scrollTop = messageDisplay.scrollHeight;
+  }
 }
 
 socket.on('your-code', (code) => {
-  myCodeEl.textContent = code;
-  myCodeEl.classList.remove('loading-pulse');
+  if (myCodeEl) {
+    myCodeEl.textContent = code;
+    myCodeEl.classList.remove('loading-pulse');
+  }
   logStatus('Handshake signature configured. Share it with your peer.');
 });
 
 socket.on('error-message', (err) => logStatus(err, true));
 socket.on('waiting-message', (msg) => logStatus(msg));
 
-connectBtn.addEventListener('click', () => {
-  const code = targetCodeInput.value.trim();
-  if (code.length === 4) {
-    logStatus('Hashing pair signatures...');
-    socket.emit('submit-target-code', code);
-  } else {
-    logStatus('Invalid sequence length. Code must be 4 digits.', true);
-  }
-});
-
+if (connectBtn) {
+  connectBtn.addEventListener('click', () => {
+    const code = targetCodeInput ? targetCodeInput.value.trim() : '';
+    if (code.length === 4) {
+      logStatus('Hashing pair signatures...');
+      socket.emit('submit-target-code', code);
+    } else {
+      logStatus('Invalid sequence length. Code must be 4 digits.', true);
+    }
+  });
+}
 
 socket.on('start-call-initiation', (data) => {
   targetSocketId = data.to;
   logStatus('Secure terminal pipeline linked! Data node online.');
   
-  matchmakerUi.style.display = 'none';
-  chatUi.style.display = 'block';
-  messageInput.focus();
+  if (matchmakerUi) matchmakerUi.style.display = 'none';
+  if (chatUi) chatUi.style.display = 'block';
+  
+  if (callBtn) { callBtn.style.display = 'block'; callBtn.disabled = false; }
+  if (muteBtn) { muteBtn.style.display = 'block'; muteBtn.disabled = true; }
+  if (hangupBtn) { hangupBtn.style.display = 'block'; hangupBtn.disabled = true; }
+
+  if (messageInput) messageInput.focus();
 });
 
-
 function transmitMessage() {
+  if (!messageInput) return;
   const text = messageInput.value.trim();
   if (!text) return;
 
@@ -74,24 +85,26 @@ function transmitMessage() {
   messageInput.value = '';
 }
 
-sendBtn.addEventListener('click', transmitMessage);
-messageInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') transmitMessage();
-});
+if (sendBtn) sendBtn.addEventListener('click', transmitMessage);
+if (messageInput) {
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') transmitMessage();
+  });
+}
 
 socket.on('receive-chat-message', (data) => {
   appendMessage(data.text, 'peer');
 });
 
-
 async function initializeAudioCall() {
-  logStatus('Requesting mic access hardware...');
+  logStatus('Starting local media hardware request...');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    logStatus('Microphone linked. Injecting audio pipeline...');
+    logStatus('Microphone linked. Injecting pipeline...');
 
- 
-    peerConnection = new RTCPeerConnection(null);
+    peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:://google.com' }]
+    });
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
@@ -103,34 +116,56 @@ async function initializeAudioCall() {
 
     peerConnection.ontrack = (event) => {
       logStatus('Voice pipeline stream connected and active.');
-      if (event.streams && event.streams[0]) {
-        remoteAudio.srcObject = event.streams[0];
-      } else {
-        remoteAudio.srcObject = new MediaStream([event.track]);
+      if (remoteAudio) {
+        if (event.streams && event.streams[0]) {
+          remoteAudio.srcObject = event.streams[0];
+        } else {
+          remoteAudio.srcObject = new MediaStream([event.track]);
+        }
       }
     };
 
-
-    callBtn.style.display = 'none';
-    muteBtn.style.display = 'block';
-    hangupBtn.style.display = 'block';
+    if (callBtn) callBtn.disabled = true;
+    if (muteBtn) muteBtn.disabled = false;
+    if (hangupBtn) hangupBtn.disabled = false;
 
   } catch (err) {
     logStatus(`Hardware block: ${err.message}`, true);
-    console.error('Initialization Crash Log:', err);
+    console.error('WebRTC Hardware Allocation Failure:', err);
   }
 }
 
+if (callBtn) {
+  callBtn.addEventListener('click', async () => {
+    logStatus('Waking voice architecture modules...');
+    await initializeAudioCall();
+    
+    if (!peerConnection) {
+      logStatus('Initialization failed: Engine block is blank.', true);
+      return;
+    }
 
-muteBtn.addEventListener('click', () => {
-  if (!localStream) return;
-  isMuted = !isMuted;
-  localStream.getAudioTracks()[0].enabled = !isMuted;
-  muteBtn.textContent = isMuted ? 'UNMUTE MIC' : 'MUTE MIC';
-  muteBtn.style.background = isMuted ? '#ff9900' : '#ffcc00';
-  logStatus(isMuted ? 'Microphone muted locally.' : 'Microphone transmission active.');
-});
+    logStatus('Broadcasting session offer handshake across network...');
+    try {
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('offer', { sdp: offer, to: targetSocketId });
+    } catch (offerErr) {
+      logStatus(`Offer mapping failure: ${offerErr.message}`, true);
+    }
+  });
+}
 
+if (muteBtn) {
+  muteBtn.addEventListener('click', () => {
+    if (!localStream) return;
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
+    muteBtn.textContent = isMuted ? 'UNMUTE MIC' : 'MUTE MIC';
+    muteBtn.style.background = isMuted ? '#ff9900' : '#ffcc00';
+    logStatus(isMuted ? 'Microphone muted locally.' : 'Microphone transmission active.');
+  });
+}
 
 function terminateAudioCall() {
   if (peerConnection) {
@@ -141,26 +176,29 @@ function terminateAudioCall() {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
   }
-  remoteAudio.srcObject = null;
+  if (remoteAudio) remoteAudio.srcObject = null;
   
-  callBtn.style.display = 'block';
-  muteBtn.style.display = 'none';
-  hangupBtn.style.display = 'none';
-  muteBtn.textContent = 'MUTE MIC';
-  muteBtn.style.background = '#ffcc00';
+  if (callBtn) callBtn.disabled = false;
+  if (muteBtn) {
+    muteBtn.disabled = true;
+    muteBtn.textContent = 'MUTE MIC';
+    muteBtn.style.background = '#ffcc00';
+  }
+  if (hangupBtn) hangupBtn.disabled = true;
   isMuted = false;
   
   logStatus('Audio node call disconnected. Text channel remains live.');
 }
 
-hangupBtn.addEventListener('click', () => {
-  terminateAudioCall();
-  socket.emit('send-chat-message', { text: '⚡ [System Notification: Voice call disconnected]', to: targetSocketId });
-});
-
+if (hangupBtn) {
+  hangupBtn.addEventListener('click', () => {
+    terminateAudioCall();
+    socket.emit('send-chat-message', { text: '[System Notification: Voice call disconnected]', to: targetSocketId });
+  });
+}
 
 socket.on('offer', async (data) => {
-  logStatus('Incoming connection request...');
+  logStatus('Incoming call handshake detected. Connecting...');
   if (!peerConnection) await initializeAudioCall();
   
   if (peerConnection) {
