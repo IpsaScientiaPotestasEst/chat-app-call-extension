@@ -22,14 +22,6 @@ let targetSocketId;
 let localStream;
 let isMuted = false;
 
-const config = {
-  iceServers: [
-    {
-      urls: 'stun:://google.com'
-    }
-  ]
-};
-
 function logStatus(message, isError = false) {
   statusLog.textContent = `> ${message}`;
   statusLog.style.borderColor = isError ? '#ff3333' : '#00ff66';
@@ -92,15 +84,17 @@ socket.on('receive-chat-message', (data) => {
   appendMessage(data.text, 'peer');
 });
 
-
-
 async function initializeAudioCall() {
   logStatus('Requesting mic access hardware...');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting audio pipeline...');
 
-    peerConnection = new RTCPeerConnection(config);
+ 
+    peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
     peerConnection.onicecandidate = (event) => {
@@ -111,7 +105,6 @@ async function initializeAudioCall() {
 
     peerConnection.ontrack = (event) => {
       logStatus('Voice pipeline stream connected and active.');
-    
       if (event.streams && event.streams[0]) {
         remoteAudio.srcObject = event.streams[0];
       } else {
@@ -119,36 +112,16 @@ async function initializeAudioCall() {
       }
     };
 
- 
+   
     callBtn.style.display = 'none';
     muteBtn.style.display = 'block';
     hangupBtn.style.display = 'block';
 
   } catch (err) {
-    
     logStatus(`Hardware block: ${err.message}`, true);
     console.error('Initialization Crash Log:', err);
   }
 }
-
-callBtn.addEventListener('click', async () => {
-  logStatus('Initializing local media engines...');
-  await initializeAudioCall();
-  
-  if (!peerConnection) {
-    logStatus('Connection failed: Engine node not initialized.', true);
-    return;
-  }
-
-  logStatus('Sending incoming call request to peer...');
-  try {
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit('offer', { sdp: offer, to: targetSocketId });
-  } catch (offerErr) {
-    logStatus(`Handshake generation failed: ${offerErr.message}`, true);
-  }
-});
 
 
 
