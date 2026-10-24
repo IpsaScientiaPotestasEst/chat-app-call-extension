@@ -142,3 +142,66 @@ button:active {
   50% { opacity: 1; }
   100% { opacity: 0.4; }
 }
+
+/* ... keep your existing style.css code from earlier ... */
+/* Add these rules to handle the chat message mechanics: */
+
+.message-log {
+  height: 250px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--dark-green);
+  border-radius: 4px;
+  padding: 15px;
+  overflow-y: auto;
+  text-align: left;
+  margin-bottom: 15px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.message-log::-webkit-scrollbar {
+  width: 4px;
+}
+.message-log::-webkit-scrollbar-thumb {
+  background: var(--dark-green);
+}
+
+.msg {
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.msg.peer {
+  color: var(--neon-green);
+}
+
+.msg.self {
+  color: #88ccaa;
+  opacity: 0.8;
+}
+
+.message-input-area {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+#message-input {
+  flex: 1;
+  background: var(--bg-color);
+  border: 1px solid var(--dark-green);
+  border-radius: 4px;
+  padding: 10px;
+  color: var(--neon-green);
+  font-size: 1rem;
+}
+
+#message-input:focus {
+  outline: none;
+  border-color: var(--neon-green);
+}
+
+#send-btn {
+  width: auto;
+  padding: 10px 20px;
+}
