@@ -111,6 +111,7 @@ async function initializeAudioCall() {
 
     peerConnection.ontrack = (event) => {
       logStatus('Voice pipeline stream connected and active.');
+    
       if (event.streams && event.streams[0]) {
         remoteAudio.srcObject = event.streams[0];
       } else {
@@ -118,13 +119,15 @@ async function initializeAudioCall() {
       }
     };
 
-    
+ 
     callBtn.style.display = 'none';
     muteBtn.style.display = 'block';
     hangupBtn.style.display = 'block';
 
   } catch (err) {
+    
     logStatus(`Hardware block: ${err.message}`, true);
+    console.error('Initialization Crash Log:', err);
   }
 }
 
