@@ -60,22 +60,17 @@ socket.on('start-call-initiation', async (data) => {
     };
 
     peerConnection.ontrack = (event) => {
-      logStatus('Secure P2P pipeline linked! Audio streaming.');
-      remoteAudio.srcObject = event.streams;
-    };
+  logStatus('Secure P2P pipeline linked! Audio streaming.');
+  
 
-    if (data.initiator) {
-      logStatus('Establishing encrypted channel handshake...');
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      socket.emit('offer', { sdp: offer, to: targetSocketId });
-    }
-  } catch (err) {
+  if (event.streams && event.streams[0]) {
+    remoteAudio.srcObject = event.streams[0];
+  } else {
     
-    logStatus(`Hardware block: ${err.name} - ${err.message}`, true);
-    console.error('WebRTC Initialisation Failure:', err);
+    remoteAudio.srcObject = new MediaStream([event.track]);
   }
-});
+};
+
 
 
 socket.on('offer', async (data) => {
