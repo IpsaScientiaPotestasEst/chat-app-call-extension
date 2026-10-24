@@ -1,8 +1,4 @@
-const BACKEND_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000' 
-  : 'https://chat-app-call-extension.onrender.com';
-
-const socket = io(BACKEND_URL);
+const socket = io('https://chat-app-call-extension.onrender.com');
 
 
 const myCodeEl = document.getElementById('my-code');
