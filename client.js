@@ -83,16 +83,15 @@ socket.on('receive-chat-message', (data) => {
   appendMessage(data.text, 'peer');
 });
 
+
 async function initializeAudioCall() {
   logStatus('Requesting mic access hardware...');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting audio pipeline...');
 
-   
-    peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:://google.com' }]
-    });
+ 
+    peerConnection = new RTCPeerConnection(null);
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
@@ -111,6 +110,7 @@ async function initializeAudioCall() {
       }
     };
 
+
     callBtn.style.display = 'none';
     muteBtn.style.display = 'block';
     hangupBtn.style.display = 'block';
@@ -120,26 +120,6 @@ async function initializeAudioCall() {
     console.error('Initialization Crash Log:', err);
   }
 }
-
-
-callBtn.addEventListener('click', async () => {
-  logStatus('Initializing local media engines...');
-  await initializeAudioCall();
-  
-  if (!peerConnection) {
-    logStatus('Connection failed: Engine node not initialized.', true);
-    return;
-  }
-
-  logStatus('Sending incoming call request to peer...');
-  try {
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit('offer', { sdp: offer, to: targetSocketId });
-  } catch (offerErr) {
-    logStatus(`Handshake generation failed: ${offerErr.message}`, true);
-  }
-});
 
 
 muteBtn.addEventListener('click', () => {
