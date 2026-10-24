@@ -1,6 +1,5 @@
 const socket = io('https://chat-app-call-extension.onrender.com');
 
-
 const myCodeEl = document.getElementById('my-code');
 const targetCodeInput = document.getElementById('target-code');
 const connectBtn = document.getElementById('connect-btn');
@@ -18,7 +17,6 @@ function logStatus(message, isError = false) {
   statusLog.style.borderColor = isError ? '#ff3333' : '#00ff66';
 }
 
-
 socket.on('your-code', (code) => {
   myCodeEl.textContent = code;
   myCodeEl.classList.remove('loading-pulse');
@@ -27,7 +25,6 @@ socket.on('your-code', (code) => {
 
 socket.on('error-message', (err) => logStatus(err, true));
 socket.on('waiting-message', (msg) => logStatus(msg));
-
 
 connectBtn.addEventListener('click', () => {
   const code = targetCodeInput.value.trim();
@@ -38,7 +35,6 @@ connectBtn.addEventListener('click', () => {
     logStatus('Invalid sequence length. Code must be 4 digits.', true);
   }
 });
-
 
 socket.on('start-call-initiation', async (data) => {
   targetSocketId = data.to;
@@ -60,18 +56,25 @@ socket.on('start-call-initiation', async (data) => {
     };
 
     peerConnection.ontrack = (event) => {
-  logStatus('Secure P2P pipeline linked! Audio streaming.');
-  
+      logStatus('Secure P2P pipeline linked! Audio streaming.');
+      if (event.streams && event.streams[0]) {
+        remoteAudio.srcObject = event.streams[0];
+      } else {
+        remoteAudio.srcObject = new MediaStream([event.track]);
+      }
+    }; // <-- Fixed: Closed the ontrack function assignment
 
-  if (event.streams && event.streams[0]) {
-    remoteAudio.srcObject = event.streams[0];
-  } else {
-    
-    remoteAudio.srcObject = new MediaStream([event.track]);
+    if (data.initiator) {
+      logStatus('Establishing encrypted channel handshake...');
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('offer', { sdp: offer, to: targetSocketId });
+    }
+  } catch (err) {
+    logStatus(`Hardware block: ${err.name} - ${err.message}`, true);
+    console.error('WebRTC Initialisation Failure:', err);
   }
-};
-
-
+}); // <-- Fixed: Closed the start-call-initiation listener block
 
 socket.on('offer', async (data) => {
   if (!peerConnection) return;
@@ -96,3 +99,6 @@ socket.on('ice-candidate', async (data) => {
     console.error('Error adding received ice candidate', e);
   }
 });
+
+
+socket.emit('client-ready');
