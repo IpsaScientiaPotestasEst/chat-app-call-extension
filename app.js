@@ -73,5 +73,6 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => console.log(`Sleek Node server running on http://localhost:${PORT}`));
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Node server running on port ${PORT}`));
