@@ -196,3 +196,20 @@ button:active {
   50% { opacity: 1; }
   100% { opacity: 0.4; }
 }
+
+/* Add these utility classes to handle the button panel mechanics */
+.call-controls-panel {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.ctrl-btn {
+  flex: 1;
+  font-size: 0.75rem !important;
+  padding: 10px !important;
+}
+
+.green-glow { background: #00ff66 !important; color: #050a06 !important; }
+.yellow-glow { background: #ffcc00 !important; color: #050a06 !important; box-shadow: 0 0 15px rgba(255, 204, 0, 0.4) !important; }
+.red-glow { background: #ff3333 !important; color: #fff !important; box-shadow: 0 0 15px rgba(255, 51, 51, 0.4) !important; }
