@@ -1,4 +1,4 @@
-const socket = io('https://chat-app-call-extension.onrender.com/');
+const socket = io(window.location.origin);
 
 const myCodeEl = document.getElementById('my-code');
 const targetCodeInput = document.getElementById('target-code');
@@ -61,18 +61,31 @@ if (connectBtn) {
   });
 }
 
-socket.on('start-call-initiation', (data) => {
+socket.on('start-call-initiation', async (data) => {
   targetSocketId = data.to;
   logStatus('Secure terminal pipeline linked! Data node online.');
   
   if (matchmakerUi) matchmakerUi.style.display = 'none';
   if (chatUi) chatUi.style.display = 'block';
   
-  if (callBtn) { callBtn.style.display = 'block'; callBtn.disabled = false; }
-  if (muteBtn) { muteBtn.style.display = 'block'; muteBtn.disabled = true; }
-  if (hangupBtn) { hangupBtn.style.display = 'block'; hangupBtn.disabled = true; }
+  if (callBtn) { callBtn.style.display = 'block'; callBtn.disabled = true; }
+  if (muteBtn) { muteBtn.style.display = 'block'; muteBtn.disabled = false; }
+  if (hangupBtn) { hangupBtn.style.display = 'block'; hangupBtn.disabled = false; }
 
   if (messageInput) messageInput.focus();
+
+  if (data.initiator) {
+    logStatus('Waking voice architecture modules...');
+    try {
+      await initializeAudioCall();
+      logStatus('Broadcasting session offer handshake across network...');
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('offer', { sdp: offer, to: targetSocketId });
+    } catch (err) {
+      logStatus(`Auto-call initiation failed: ${err.message}`, true);
+    }
+  }
 });
 
 function transmitMessage() {
@@ -97,21 +110,18 @@ socket.on('receive-chat-message', (data) => {
 });
 
 async function initializeAudioCall() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    logStatus("Security block: Application requires HTTPS connection.", true);
+    throw new Error("MediaDevices API unavailable outside secure context (HTTPS).");
+  }
+
   logStatus('Starting local media hardware request...');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting pipeline...');
 
-  
     peerConnection = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: [
-            'stun:stun.l.google.com:19302',
-            'stun:://twilio.com'
-          ]
-        }
-      ]
+      iceServers: [{ urls: ['stun:://google.com', 'stun:://twilio.com'] }]
     });
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -130,23 +140,40 @@ async function initializeAudioCall() {
         } else {
           remoteAudio.srcObject = new MediaStream([event.track]);
         }
+        remoteAudio.muted = false;
+        remoteAudio.autoplay = true;
+        remoteAudio.playsInline = true;
+        const playPromise = remoteAudio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            logStatus("Click anywhere on the page to unmute incoming audio.");
+            document.body.addEventListener('click', () => {
+              remoteAudio.play();
+            }, { once: true });
+          });
+        }
       }
     };
-
-    if (callBtn) callBtn.disabled = true;
-    if (muteBtn) {
-      muteBtn.disabled = false;
-      muteBtn.textContent = 'MUTE MIC';
-      muteBtn.style.background = '#ffcc00';
-    }
-    if (hangupBtn) hangupBtn.disabled = false;
-    isMuted = false;
 
   } catch (err) {
     logStatus(`Hardware block: ${err.message}`, true);
     console.error('WebRTC Hardware Allocation Failure:', err);
     throw err;
   }
+}
+
+if (callBtn) {
+  callBtn.addEventListener('click', async () => {
+    logStatus('Waking voice architecture modules manually...');
+    try {
+      await initializeAudioCall();
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('offer', { sdp: offer, to: targetSocketId });
+    } catch (offerErr) {
+      logStatus(`Offer mapping failure: ${offerErr.message}`, true);
+    }
+  });
 }
 
 if (muteBtn) {
@@ -186,12 +213,10 @@ function terminateAudioCall() {
 if (hangupBtn) {
   hangupBtn.addEventListener('click', () => {
     terminateAudioCall();
-    
     socket.emit('hangup-signal', { to: targetSocketId });
     socket.emit('send-chat-message', { text: '[System Notification: Voice call disconnected]', to: targetSocketId });
   });
 }
-
 
 socket.on('hangup-signal', () => {
   terminateAudioCall();
@@ -199,11 +224,7 @@ socket.on('hangup-signal', () => {
 
 socket.on('offer', async (data) => {
   logStatus('Incoming call handshake detected. Connecting...');
-  
- 
-  if (data.from) {
-    targetSocketId = data.from;
-  }
+  if (data.from) targetSocketId = data.from;
 
   try {
     if (!peerConnection) await initializeAudioCall();
