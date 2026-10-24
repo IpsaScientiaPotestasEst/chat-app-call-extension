@@ -121,7 +121,10 @@ async function initializeAudioCall() {
     logStatus('Microphone linked. Injecting pipeline...');
 
     peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: ['stun:://google.com', 'stun:://twilio.com'] }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:://twilio.com' }
+      ]
     });
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
