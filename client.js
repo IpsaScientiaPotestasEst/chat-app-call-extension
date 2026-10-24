@@ -120,12 +120,7 @@ async function initializeAudioCall() {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting pipeline...');
 
-    peerConnection = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:://twilio.com' }
-      ]
-    });
+    peerConnection = new RTCPeerConnection();
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
