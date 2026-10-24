@@ -11,7 +11,6 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-
 app.use(express.static(__dirname));
 
 const activeCodes = new Map(); 
@@ -29,7 +28,9 @@ io.on('connection', (socket) => {
   const myCode = generateUniqueCode();
   activeCodes.set(myCode, socket.id);
   
-  socket.emit('your-code', myCode);
+  socket.on('client-ready', () => {
+    socket.emit('your-code', myCode);
+  });
 
   socket.on('submit-target-code', (targetCode) => {
     const targetSocketId = activeCodes.get(targetCode);
@@ -55,6 +56,11 @@ io.on('connection', (socket) => {
   });
 
 
+  socket.on('send-chat-message', (data) => {
+    io.to(data.to).emit('receive-chat-message', { text: data.text });
+  });
+
+
   socket.on('offer', (data) => {
     io.to(data.to).emit('offer', { sdp: data.sdp, from: socket.id });
   });
@@ -73,10 +79,5 @@ io.on('connection', (socket) => {
   });
 });
 
- socket.on('send-chat-message', (data) => {
-    
-    io.to(data.to).emit('receive-chat-message', { text: data.text });
-  });
-
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Node server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Sleek Comms server running on port ${PORT}`));
