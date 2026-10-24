@@ -1,4 +1,8 @@
-const socket = io('https://chat-app-call-extension.onrender.com');
+const BACKEND_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000' 
+  : 'https://onrender.com';
+
+const socket = io(BACKEND_URL);
 
 const myCodeEl = document.getElementById('my-code');
 const targetCodeInput = document.getElementById('target-code');
@@ -6,15 +10,29 @@ const connectBtn = document.getElementById('connect-btn');
 const statusLog = document.getElementById('status-log');
 const remoteAudio = document.getElementById('remote-audio');
 
+const matchmakerUi = document.getElementById('matchmaker-ui');
+const chatUi = document.getElementById('chat-ui');
+const messageDisplay = document.getElementById('message-display');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+
 let peerConnection;
 let targetSocketId;
 let localStream;
 
-const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const config = { iceServers: [{ urls: 'stun:://google.com' }] };
 
 function logStatus(message, isError = false) {
   statusLog.textContent = `> ${message}`;
   statusLog.style.borderColor = isError ? '#ff3333' : '#00ff66';
+}
+
+function appendMessage(text, type) {
+  const msgDiv = document.createElement('div');
+  msgDiv.classList.add('msg', type);
+  msgDiv.textContent = type === 'self' ? `[You]: ${text}` : `[Peer]: ${text}`;
+  messageDisplay.appendChild(msgDiv);
+  messageDisplay.scrollTop = messageDisplay.scrollHeight;
 }
 
 socket.on('your-code', (code) => {
@@ -36,17 +54,22 @@ connectBtn.addEventListener('click', () => {
   }
 });
 
+
 socket.on('start-call-initiation', async (data) => {
   targetSocketId = data.to;
-  logStatus('Mutual match confirmed! Initializing audio engine...');
+  logStatus('Mutual match confirmed! Syncing text & audio engines...');
   
+
+  matchmakerUi.style.display = 'none';
+  chatUi.style.display = 'block';
+  messageInput.focus();
+
   try {
-    logStatus('Requesting microphone access hardware...');
+    logStatus('Requesting mic access hardware...');
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    logStatus('Microphone access granted. Creating P2P node...');
+    logStatus('Microphone linked. Injecting audio pipeline...');
 
     peerConnection = new RTCPeerConnection(config);
-
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
     peerConnection.onicecandidate = (event) => {
@@ -56,31 +79,49 @@ socket.on('start-call-initiation', async (data) => {
     };
 
     peerConnection.ontrack = (event) => {
-      logStatus('Secure P2P pipeline linked! Audio streaming.');
+      logStatus('Secure P2P audio pipeline linked! Chat & Call active.');
       if (event.streams && event.streams[0]) {
         remoteAudio.srcObject = event.streams[0];
       } else {
         remoteAudio.srcObject = new MediaStream([event.track]);
       }
-    }; // <-- Fixed: Closed the ontrack function assignment
+    };
 
     if (data.initiator) {
-      logStatus('Establishing encrypted channel handshake...');
+      logStatus('Establishing encrypted secure channel handshake...');
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('offer', { sdp: offer, to: targetSocketId });
     }
   } catch (err) {
     logStatus(`Hardware block: ${err.name} - ${err.message}`, true);
-    console.error('WebRTC Initialisation Failure:', err);
+    console.error('Audio engine track mismatch:', err);
   }
-}); // <-- Fixed: Closed the start-call-initiation listener block
+});
+
+
+function transmitMessage() {
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  appendMessage(text, 'self');
+  socket.emit('send-chat-message', { text: text, to: targetSocketId });
+  messageInput.value = '';
+}
+
+sendBtn.addEventListener('click', transmitMessage);
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') transmitMessage();
+});
+
+socket.on('receive-chat-message', (data) => {
+  appendMessage(data.text, 'peer');
+});
+
 
 socket.on('offer', async (data) => {
   if (!peerConnection) return;
-  logStatus('Processing incoming digital handshake...');
   await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-  
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
   socket.emit('answer', { sdp: answer, to: targetSocketId });
@@ -99,6 +140,5 @@ socket.on('ice-candidate', async (data) => {
     console.error('Error adding received ice candidate', e);
   }
 });
-
 
 socket.emit('client-ready');
