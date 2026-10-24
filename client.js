@@ -198,14 +198,14 @@ function terminateAudioCall() {
   
   if (callBtn) callBtn.disabled = false;
   if (muteBtn) {
-    muteBtn.disabled = true;
+    muteBtn.disabled = false;
     muteBtn.textContent = 'MUTE MIC';
     muteBtn.style.background = '#ffcc00';
   }
-  if (hangupBtn) hangupBtn.disabled = true;
+  if (hangupBtn) hangupBtn.disabled = false;
   isMuted = false;
   
-  logStatus('Audio node call disconnected. Text channel remains live.');
+  logStatus('Audio node call disconnected. Text channel remains live. Ready to re-initialize.');
 }
 
 if (hangupBtn) {
