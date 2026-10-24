@@ -1,4 +1,4 @@
-const socket = io(window.location.origin);
+const socket = io('https://chat-app-call-extension.onrender.com/');
 
 const myCodeEl = document.getElementById('my-code');
 const targetCodeInput = document.getElementById('target-code');
