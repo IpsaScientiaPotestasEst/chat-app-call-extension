@@ -1,4 +1,4 @@
-const socket = io('https://chat-app-call-extension.onrender.com/');
+const socket = io(window.location.origin);
 
 const myCodeEl = document.getElementById('my-code');
 const targetCodeInput = document.getElementById('target-code');
@@ -34,7 +34,6 @@ function appendMessage(text, type) {
   messageDisplay.appendChild(msgDiv);
   messageDisplay.scrollTop = messageDisplay.scrollHeight;
 }
-
 
 socket.on('your-code', (code) => {
   myCodeEl.textContent = code;
@@ -90,9 +89,9 @@ async function initializeAudioCall() {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     logStatus('Microphone linked. Injecting audio pipeline...');
 
- 
+   
     peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [{ urls: 'stun:://google.com' }]
     });
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -112,7 +111,6 @@ async function initializeAudioCall() {
       }
     };
 
-   
     callBtn.style.display = 'none';
     muteBtn.style.display = 'block';
     hangupBtn.style.display = 'block';
@@ -123,6 +121,25 @@ async function initializeAudioCall() {
   }
 }
 
+
+callBtn.addEventListener('click', async () => {
+  logStatus('Initializing local media engines...');
+  await initializeAudioCall();
+  
+  if (!peerConnection) {
+    logStatus('Connection failed: Engine node not initialized.', true);
+    return;
+  }
+
+  logStatus('Sending incoming call request to peer...');
+  try {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    socket.emit('offer', { sdp: offer, to: targetSocketId });
+  } catch (offerErr) {
+    logStatus(`Handshake generation failed: ${offerErr.message}`, true);
+  }
+});
 
 
 muteBtn.addEventListener('click', () => {
@@ -145,7 +162,7 @@ function terminateAudioCall() {
     localStream = null;
   }
   remoteAudio.srcObject = null;
-
+  
   callBtn.style.display = 'block';
   muteBtn.style.display = 'none';
   hangupBtn.style.display = 'none';
@@ -158,20 +175,20 @@ function terminateAudioCall() {
 
 hangupBtn.addEventListener('click', () => {
   terminateAudioCall();
- 
-  socket.emit('send-chat-message', { text: '[System Notification: Voice call disconnected]', to: targetSocketId });
+  socket.emit('send-chat-message', { text: '⚡ [System Notification: Voice call disconnected]', to: targetSocketId });
 });
-
 
 
 socket.on('offer', async (data) => {
   logStatus('Incoming connection request...');
   if (!peerConnection) await initializeAudioCall();
   
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  socket.emit('answer', { sdp: answer, to: targetSocketId });
+  if (peerConnection) {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    socket.emit('answer', { sdp: answer, to: targetSocketId });
+  }
 });
 
 socket.on('answer', async (data) => {
