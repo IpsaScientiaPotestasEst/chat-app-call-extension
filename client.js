@@ -45,7 +45,10 @@ socket.on('start-call-initiation', async (data) => {
   logStatus('Mutual match confirmed! Initializing audio engine...');
   
   try {
+    logStatus('Requesting microphone access hardware...');
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    logStatus('Microphone access granted. Creating P2P node...');
+
     peerConnection = new RTCPeerConnection(config);
 
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -58,10 +61,9 @@ socket.on('start-call-initiation', async (data) => {
 
     peerConnection.ontrack = (event) => {
       logStatus('Secure P2P pipeline linked! Audio streaming.');
-      remoteAudio.srcObject = event.streams[0];
+      remoteAudio.srcObject = event.streams;
     };
 
-  
     if (data.initiator) {
       logStatus('Establishing encrypted channel handshake...');
       const offer = await peerConnection.createOffer();
@@ -69,9 +71,12 @@ socket.on('start-call-initiation', async (data) => {
       socket.emit('offer', { sdp: offer, to: targetSocketId });
     }
   } catch (err) {
-    logStatus(`Hardware error: ${err.message}`, true);
+    
+    logStatus(`Hardware block: ${err.name} - ${err.message}`, true);
+    console.error('WebRTC Initialisation Failure:', err);
   }
 });
+
 
 socket.on('offer', async (data) => {
   if (!peerConnection) return;
